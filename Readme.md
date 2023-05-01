@@ -15,6 +15,10 @@ The plugin is powered by GPT-4, Langchain, and Pinecone.
 
 # Setup Steps
 - Clone this repo into `<obsidian-vault-path>/.obsidian/plugins/knowledge-wizard/`
+- cd into the folder knowledge-wizard
+- Run `npm i`
+- Run `npm run dev` to finish building the plugin
+
 
 ## Creating Python Virtual Environment
 I will use conda here. Follow the following steps in the terminal (first cd to the Knowledge Wizard plugin folder)
