@@ -197,7 +197,6 @@ export default class VCWizardPlugin extends Plugin{
     }
 
     registerCreatedFile(){
-        new Notice(`I am registering created files a little bit later!`)
         this.registerEvent(this.app.vault.on('create', (file) => this.register_file_change(file, FileType.new))  )
     };
 
