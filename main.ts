@@ -551,7 +551,7 @@ class VCWizardSettingTab extends PluginSettingTab{
 
 		containerEl.empty();
 
-		containerEl.createEl('h2', {text: 'Settings for your butler'});
+		containerEl.createEl('h2', {text: 'Settings for your Knowledge Wizard'});
 
 		new Setting(containerEl)
 			.setName('Obsidian Vault Path')
