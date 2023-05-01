@@ -257,7 +257,7 @@ export default class VCWizardPlugin extends Plugin{
 
     async loadSettings(){
         this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
-        scriptPath_AI = this.settings.vaultPath + '.obsidian/plugins/vc_wizard'
+        scriptPath_AI = this.settings.vaultPath + '.obsidian/plugins/knowledge-wizard'
         openaiAPIKey = this.settings.openAIKey
         pineconeAPIKey = this.settings.pineconeKey
         pineconeIndexName = this.settings.pineconeIndexName
@@ -269,7 +269,7 @@ export default class VCWizardPlugin extends Plugin{
 
     async saveSettings(){
         await this.saveData(this.settings)
-        scriptPath_AI = this.settings.vaultPath + '.obsidian/plugins/vc_wizard'
+        scriptPath_AI = this.settings.vaultPath + '.obsidian/plugins/knowledge-wizard'
         openaiAPIKey = this.settings.openAIKey
         pineconeEnvName = this.settings.pineconeEnv
         pineconeAPIKey = this.settings.pineconeKey
