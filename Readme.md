@@ -20,6 +20,25 @@ This is an obsidian plugin that does 4 things:
 
 The plugin is powered by Bing Chat (through EdgeGPT), GPT-4, Langchain, and Pinecone.
 
+<details>
+<summary> Market Map Demo </summary>
+
+## Market Map Demo
+You just input the name of the indsutry and you get a market map
+
+![screen-gif](./gifs/market_map.gif)
+</details>
+
+
+<details>
+<summary> Market Research Demo </summary>
+
+## Market Research Demo
+You just input the name of the indsutry and you get a detailed market research along with resources
+
+![screen-gif](./gifs/market_map.gif)
+</details>
+
 
 
 # Setup Steps
