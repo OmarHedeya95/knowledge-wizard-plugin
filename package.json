@@ -1,7 +1,7 @@
 {
 	"name": "knowledge-wizard",
-	"version": "1.0.0",
-	"description": "A plugin that helps you find related ideas to any paragraph in your notes as well as tagging paragraphs for easier retrieval",
+	"version": "1.1.0",
+	"description": "Find related ideas to any paragraph in your notes as well as tagging paragraphs for easier retrieval. Moreover it can provide market map as well as detailed market research",
 	"main": "main.js",
 	"scripts": {
 		"dev": "node esbuild.config.mjs",

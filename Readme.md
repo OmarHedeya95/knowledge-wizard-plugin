@@ -1,5 +1,7 @@
+**Notice:** This plugin is best used together with the [vc-copilot](https://github.com/OmarHedeya95/vc-copilot)
+
 # Explanation
-This is an obsidian plugin that does 2 things:
+This is an obsidian plugin that does 4 things:
 
 1. It makes all your notes semantically searchable; you can simply highlight any text in your notes (or write new text for that matter) and with a click of a button get all ideas (paragraphs) that are similar to this thought you have just highlighted (through the indexing and re-indexing of new files functionality)
 
@@ -8,10 +10,17 @@ This is an obsidian plugin that does 2 things:
    - What are the relevant industries or sectors of the economy for this paragraph?
    - What are the lifeskills that the human can learn from this paragraph?
    - Are there any locations that were mentioned in the paragraph? (To help you connect ideas geographically as well)
+   - The hashtags that will be generated then will have the following formats usually: `#Industry/<relevant-industry>` or `#LifeSkills/<relevant-skill>` or `#Geo/<relevant-geo>` 
 
-The hashtags that will be generated then will have the following formats usually: `#Industry/<relevant-industry>` or `#LifeSkills/<relevant-skill>` or `#Geo/<relevant-geo>` 
 
-The plugin is powered by GPT-4, Langchain, and Pinecone.
+3. It gives you a market map (in form of a table) for any market you choose
+
+4. It gives you detailed market research along with sources for any market you choose.
+
+
+The plugin is powered by Bing Chat (through EdgeGPT), GPT-4, Langchain, and Pinecone.
+
+
 
 # Setup Steps
 - Clone this repo into `<obsidian-vault-path>/.obsidian/plugins/knowledge-wizard/`

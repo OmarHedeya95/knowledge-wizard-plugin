@@ -1,9 +1,9 @@
 {
 	"id": "knowledge-wizard",
 	"name": "Knowledge Wizard",
-	"version": "1.0.0",
+	"version": "1.1.0",
 	"minAppVersion": "0.15.0",
-	"description": "A plugin that helps you find related ideas to any paragraph in your notes as well as tagging paragraphs for easier retrieval",
+	"description": "Find related ideas to any paragraph in your notes as well as tagging paragraphs for easier retrieval. Moreover it can provide market map as well as detailed market research",
 	"author": "Omar Hedeya",
 	"authorUrl": "omarhedeya.com",
 	"fundingUrl": "https://obsidian.md/pricing",
