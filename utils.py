@@ -13,6 +13,65 @@ from langchain.schema import (
     SystemMessage
 )
 
+import asyncio
+from EdgeGPT import Chatbot, ConversationStyle, Query, Cookie
+
+'''Bing Chat Methods'''
+
+async def bing_chat_search(prompt: str, plugin_path: str):
+    bot = await Chatbot.create(cookie_path= plugin_path + '/cookies.json')
+    
+    # Step 1: Call the ask method and store the Coroutine in a variable
+    ask_coroutine = bot.ask(prompt=prompt, conversation_style=ConversationStyle.creative) #conversation_style=ConversationStyle.creative
+    
+    # Step 2: Use the await keyword to run the Coroutine and get the result
+    result = await ask_coroutine
+
+    reply = result['item']['messages'][1]['text']
+    sources_list = result["item"]["messages"][1]["sourceAttributions"]
+    filtered_sources = []
+    for source in sources_list:
+        filtered_sources.append(source['seeMoreUrl'])
+    
+
+    await bot.close()
+
+    return reply, filtered_sources 
+
+async def market_research(industry: str, plugin_path: str):
+    prompt_markets = industry + ' industry report marketsandmarkets.com'
+    prompt_gartner = industry + ' industry report Gartner'
+    prompt_mckinsey = industry + ' industry report Mckinsey'
+    prompt_statista = industry + ' industry report statista.com'
+    prompt_reddit = industry + ' industry report overview reddit.com'
+    prompt_primer = industry + ' industry primer pdf'
+
+    prompts = [prompt_markets, prompt_gartner, prompt_statista, prompt_mckinsey, prompt_reddit, prompt_primer]
+
+    replies = {}
+    sources = []
+
+    #? This way we create multiple threads (Bing Chat requests) concurrently to speed up the process
+    tasks = []
+    for prompt in prompts:
+        task = asyncio.create_task(bing_chat_search(prompt, plugin_path))
+        tasks.append(task)
+
+    results = await asyncio.gather(*tasks)
+    for i, result in enumerate(results, 1):
+        reply, sources_list = result
+        replies[f'prompt_{i}'] = {'text': reply, 'sources': sources_list}
+
+    #? Unoptimized code  
+    '''for i, prompt in enumerate(prompts, 1):
+        reply, sources_list = await bing_chat_search(prompt)
+        replies[f'prompt_{i}'] = {'text': reply, 'sources': sources_list}'''
+
+    
+    print(json.dumps(replies))
+    return replies, sources
+
+
 
 
 '''Pinecone Methods'''

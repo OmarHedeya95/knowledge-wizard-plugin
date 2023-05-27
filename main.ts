@@ -1,5 +1,6 @@
 import { App, Editor, MarkdownView, Modal, Notice, Plugin, PluginSettingTab, Setting, Menu, MenuItem, MarkdownFileInfo, TFile, TAbstractFile} from 'obsidian';
 import { WizardView, WIZARD_VIEW } from 'view';
+import {TextInputModal} from 'modal';
 import * as fs from 'fs';
 import { execSync } from 'child_process';
 const { Configuration, OpenAIApi } = require("openai");
@@ -26,7 +27,8 @@ async function openai_js(query: String, system_prompt: String){
       
     const response = await openai.createChatCompletion({
         model: "gpt-4",
-        temperature: 0.3,
+        temperature: 1.0,
+        max_tokens: 1024,
         messages: [
             {role: "system", content: system_message},
             {role: "user", content: query} 
@@ -169,6 +171,8 @@ enum SummaryType{
 }
 
 
+
+
 export default class VCWizardPlugin extends Plugin{
     settings: ButlerSettings;
     status: HTMLElement;
@@ -186,6 +190,37 @@ export default class VCWizardPlugin extends Plugin{
         this.addCommand({id: 'index-changed-files', name: 'Reindex New/Changed Files Only', callback: () => this.index_new_and_modified_files()})
         this.addCommand({id: 'find-similar-ideas', name: 'Find Similar Ideas', editorCallback: (editor, view) => this.find_similar_ideas(editor, view)})
         this.addCommand({id: 'hashtag-generator', name: 'Add Hashtags to #AddHashtags Files', callback: () => this.add_hashtags(this.status)})
+
+        this.addCommand({
+            id: 'market-research-command',
+            name: 'Market Research',
+            editorCallback: (editor: Editor) => {
+              const inputModal = new TextInputModal(this.app, 'market-research',(input) => {
+                // Handle the submitted text here
+                console.log('Submitted text:', input);
+                this.market_research(input, editor);
+
+              });
+              inputModal.open();
+            },
+          });
+
+        this.addCommand({
+            id: 'market-map-command',
+            name: 'Market Map',
+            editorCallback: (editor: Editor) => {
+              const inputModal = new TextInputModal(this.app, 'market-research',(input) => {
+                // Handle the submitted text here
+                console.log('Submitted text:', input);
+                this.market_map(input, editor);
+
+              });
+              inputModal.open();
+            },
+          });
+
+        
+
         this.addSettingTab(new VCWizardSettingTab(this.app, this));
         this.registerEvent(this.app.vault.on('modify', (file) => this.register_file_change(file, FileType.modified)))
         this.registerEvent(this.app.vault.on('delete', (file) => this.register_file_change(file, FileType.deleted)))
@@ -537,6 +572,91 @@ export default class VCWizardPlugin extends Plugin{
 
 
     }
+
+
+
+    async market_research(industry: string, editor: Editor){
+        let scriptPath = scriptPath_AI
+        const plugin_path = scriptPath_AI
+        const scriptName =  'market_research.py'
+
+        console.log(plugin_path)
+
+        var args = [industry, plugin_path]
+
+        this.status.setText('🧙 🔎: Knowledge Wizard doing market research...')
+        this.status.setAttr('title', 'Wizard is researching the market')
+
+        const research_result = await launch_python(pythonPath, scriptPath, scriptName, args) as any
+        //console.log(research_result)
+
+        let dict: {[key: string]: {text: string, sources: string[]}} = JSON.parse(research_result)
+
+        //console.log(dict)
+        let final_text = '## Market Research\n'
+        for (const key in dict){
+            //console.log(dict[key].text)
+            final_text = final_text + '#### Sub Result\n' + dict[key].text + '\n##### Sources:\n'
+            let i = 1;
+            for (let source in dict[key].sources){
+
+                final_text = final_text + `${i}) ` + dict[key].sources[source] + '\n'
+                i = i + 1;
+
+            }
+
+        }
+
+        //console.log(final_text)
+
+        editor.replaceRange(final_text, editor.getCursor());
+
+        this.status.setText('🧙: Knowledge Wizard ready')
+        this.status.setAttr('title', 'Wizard is ready')
+
+    }
+
+    async market_map(industry: string, editor: Editor){
+        let scriptPath = scriptPath_AI
+        const plugin_path = scriptPath_AI
+        const scriptName =  'market_map.py'
+
+        console.log(plugin_path)
+
+        var args = [industry, plugin_path]
+
+        this.status.setText('🧙 🔎: Knowledge Wizard mapping the market...')
+        this.status.setAttr('title', 'Wizard is researching the market')
+
+        const research_result = await launch_python(pythonPath, scriptPath, scriptName, args) as any
+        //console.log(research_result)
+
+        let dict: {[key: string]: {text: string, sources: string[]}} = JSON.parse(research_result)
+
+        //console.log(dict)
+        let final_text = '## Market Map\n'
+        for (const key in dict){
+            //console.log(dict[key].text)
+            final_text = final_text + dict[key].text + '\n##### Sources:\n'
+            let i = 1;
+            for (let source in dict[key].sources){
+
+                final_text = final_text + `${i}) ` + dict[key].sources[source] + '\n'
+                i = i + 1;
+
+            }
+
+        }
+
+        //console.log(final_text)
+
+        editor.replaceRange(final_text, editor.getCursor());
+
+        this.status.setText('🧙: Knowledge Wizard ready')
+        this.status.setAttr('title', 'Wizard is ready')
+
+    }
+
 }
 
 class VCWizardSettingTab extends PluginSettingTab{

@@ -18,6 +18,8 @@ The plugin is powered by GPT-4, Langchain, and Pinecone.
 - cd into the folder knowledge-wizard
 - Run `npm i`
 - Run `npm run dev` to finish building the plugin
+- To be able to use Market Research and Market Map Features you need to have access to Bing Chat and follow the steps outlined here to access it through APIs (https://github.com/acheong08/EdgeGPT)
+   - When you create the cookies file, add it as `cookies.json` inside the same directory as the plugin
 
 
 ## Creating Python Virtual Environment
