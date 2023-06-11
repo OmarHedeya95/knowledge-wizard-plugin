@@ -404,9 +404,26 @@ export default class VCWizardPlugin extends Plugin{
                 return;
 
             }
-            
-            try{
-                await this.index_files(storage_path)
+
+            let counter = 0
+            try{                
+                // We will index file by file to keep the user updated and keep track of any files that were not indexed due to any error
+                for (let [key, value] of Object.entries(files_to_modify) as [any, any]){
+                    if (value.change_type == FileType.new || value.change_type == FileType.modified || value.change_type == FileType.deleted){
+                        new Notice(`Indexing file: ${key}`)
+                        counter = counter + 1
+                        let file_path = value.full_path
+                        let modification_type = value.change_type
+                        let file_name = key
+
+                        await this.index_file(file_path, modification_type, file_name)
+
+                    }
+                }
+
+
+                
+                
             }
             catch (e){
                 new Notice("There was an error while indexing!")
@@ -416,9 +433,21 @@ export default class VCWizardPlugin extends Plugin{
             }
             //Empty the modified file
             new Notice("Finished indexing!")
-            //console.log(storage_path)
+            
+            if (Object.entries(files_to_modify).length > counter){
+                //If any problem happened and some files were not indexed save them for the next time
+                new Notice("Some files were NOT indexed! Run the command again")
+                let new_files = Object.entries(files_to_modify).slice(counter + 1)
+                let new_dict = Object.fromEntries(new_files)
+                save_json(storage_path, new_dict)
+            }
+            
+
+
+
             this.status.setText('🧙: Knowledge Wizard ready')
             this.status.setAttr('title', 'Knowledge Wizard is ready')
+            
             save_json(storage_path, {})
 
         })
@@ -476,6 +505,20 @@ export default class VCWizardPlugin extends Plugin{
         this.status.setText('🧙: Knowledge Wizard ready')
         this.status.setAttr('title', 'Knowledge Wizard is ready')
         return results
+    }
+
+    async index_file (file_path: string, modification_type: string, file_name: string){
+
+        let scriptPath = scriptPath_AI
+        const scriptName = 'index_file.py'
+        const plugin_path = scriptPath_AI
+        
+        var args = [file_path, openaiAPIKey, plugin_path, pineconeAPIKey, pineconeIndexName, pineconeEnvName, modification_type, file_name]
+        let results = await launch_python(pythonPath, scriptPath, scriptName, args)
+        console.log(results)
+        return results
+
+
     }
     async extract_title_and_path_json(results: JSON){
         let currnet_filename = this.app.workspace.getActiveFile()?.basename
