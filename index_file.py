@@ -17,11 +17,6 @@ file_name = sys.argv[8]
 
 openai_key = key
 
-print ("Python Code")
-print (modification_type)
-print (file_name)
-print(file_path_to_index)
-
 
 if '.canvas' not in file_name.lower():
     index, docsearch = init_and_load_pinecone(pinecone_index_name, openai_key, pinecone_key, pinecone_env_name)
