@@ -219,6 +219,20 @@ export default class VCWizardPlugin extends Plugin{
             },
           });
 
+        this.addCommand({
+            id: 'url-research-command',
+            name: 'Url Research',
+            editorCallback: (editor: Editor) => {
+              const inputModal = new TextInputModal(this.app, 'Url Research',(input) => {
+                // Handle the submitted text here
+                console.log('Submitted text:', input);
+                this.url_research(input, editor);
+
+              });
+              inputModal.open();
+            },
+          });
+
         
 
         this.addSettingTab(new VCWizardSettingTab(this.app, this));
@@ -406,7 +420,9 @@ export default class VCWizardPlugin extends Plugin{
             }
 
             let counter = 0
-            try{                
+            try{
+                //!await this.index_files(storage_path)
+                
                 // We will index file by file to keep the user updated and keep track of any files that were not indexed due to any error
                 for (let [key, value] of Object.entries(files_to_modify) as [any, any]){
                     if (value.change_type == FileType.new || value.change_type == FileType.modified || value.change_type == FileType.deleted){
@@ -700,6 +716,46 @@ export default class VCWizardPlugin extends Plugin{
 
     }
 
+    async url_research(url: string, editor: Editor){
+        let scriptPath = scriptPath_AI
+        const plugin_path = scriptPath_AI
+        const scriptName =  'url_research.py'
+
+        //console.log(plugin_path)
+        
+
+        var args = [url, openaiAPIKey]
+
+        this.status.setText(`🧙 🔎: Knowledge Wizard researching ${url}...`)
+        this.status.setAttr('title', 'Wizard is researching the url')
+
+        const research_result = await launch_python(pythonPath, scriptPath, scriptName, args) as any
+        console.log("Inside Url Research after results came back")
+        console.log(research_result)
+
+        let dict: {[key: string]: string} = JSON.parse(research_result)
+
+        console.log(dict)
+        let final_text = `## ${url} research\n`
+        for (const key in dict){
+            //console.log(dict[key].text)
+            final_text = final_text + dict[key] 
+
+        }
+        final_text = final_text.replace('Problem to be solved:', '#### Problem to be solved')
+        final_text = final_text.replace("Product:", "#### Product")
+        final_text = final_text.replace('Features:', '#### Features')
+        final_text = final_text.replace('Competition:', '#### Competition')
+        final_text = final_text.replace('Vision:', '#### Vision')
+        final_text = final_text.replace('Extras:', '#### Extras')
+        console.log(final_text)
+
+        editor.replaceRange(final_text, editor.getCursor());
+
+        this.status.setText('🧙: Knowledge Wizard ready')
+        this.status.setAttr('title', 'Wizard is ready')
+
+    }
 }
 
 class VCWizardSettingTab extends PluginSettingTab{
