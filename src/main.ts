@@ -746,6 +746,7 @@ export default class VCWizardPlugin extends Plugin{
         final_text = final_text.replace("Product:", "#### Product")
         final_text = final_text.replace('Features:', '#### Features')
         final_text = final_text.replace('Competition:', '#### Competition')
+        final_text = final_text.replace('Business Model:', '#### Business Model')
         final_text = final_text.replace('Vision:', '#### Vision')
         final_text = final_text.replace('Extras:', '#### Extras')
         console.log(final_text)

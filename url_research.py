@@ -13,7 +13,7 @@ from langchain.schema import (
 
 from langchain.text_splitter import CharacterTextSplitter, TokenTextSplitter
 from pprint import pprint
-import re
+import regex as re
 
 from langchain.text_splitter import NLTKTextSplitter
 
@@ -55,7 +55,7 @@ def get_links(url):
 
 def get_absolute_links(url: str, links: list):
     urls = {}
-    ignore_links = ["twitter.com", "discord.com", "career", "youtube", "job", "vimeo", "linkedin"]
+    ignore_links = ["twitter.com", "discord.com", "career", "youtube", "job", "vimeo", "linkedin", "slack.com", "typeform.com", "tiktok.com", "facebook.com"]
     #to avoid cases where the homepage is not included as a link
     links.append({"href": url})
     for link in links:
@@ -64,6 +64,10 @@ def get_absolute_links(url: str, links: list):
             if 'http' not in absolute_link:
                 absolute_link = url + '/' + absolute_link
             
+            # remove double // if it is not preceeded by https: and / at the end of the link
+            absolute_link = re.sub(r"(?<!https:|http:)/+", '/', absolute_link)
+            absolute_link = re.sub(r"/$", '', absolute_link)
+
             if any(substring in absolute_link for substring in ignore_links):
                 #We still record the link but we do not read it
                 urls[absolute_link] = False
