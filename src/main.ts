@@ -13,6 +13,7 @@ let openaiAPIKey = ''
 let pineconeAPIKey = ''
 let pineconeIndexName = ''
 let pineconeEnvName = 'us-east1-gcp'
+let links_num_research = '6'
 
 
 async function openai_js(query: String, system_prompt: String){
@@ -145,7 +146,8 @@ interface ButlerSettings {
     pineconeKey: string;
     pineconeIndexName: string;
     pineconeEnv: string;
-    pythonPath: string
+    pythonPath: string;
+    links_num: string
 
 }
 
@@ -155,7 +157,8 @@ const DEFAULT_SETTINGS: ButlerSettings = {
     pineconeKey: 'default',
     pineconeIndexName: 'default',
     pineconeEnv: 'us-east1-gcp',
-    pythonPath: '<path-to-virtual-env>'
+    pythonPath: '<path-to-virtual-env>',
+    links_num: '6'
 
 }
 
@@ -310,7 +313,7 @@ export default class VCWizardPlugin extends Plugin{
         pineconeAPIKey = this.settings.pineconeKey
         pineconeIndexName = this.settings.pineconeIndexName
         pineconeEnvName = this.settings.pineconeEnv
-        
+        links_num_research = this.settings.links_num
         
         pythonPath = this.settings.pythonPath
     }
@@ -322,7 +325,7 @@ export default class VCWizardPlugin extends Plugin{
         pineconeEnvName = this.settings.pineconeEnv
         pineconeAPIKey = this.settings.pineconeKey
         pineconeIndexName = this.settings.pineconeIndexName
-
+        links_num_research = this.settings.links_num
         
         
 
@@ -724,8 +727,8 @@ export default class VCWizardPlugin extends Plugin{
         //console.log(plugin_path)
         
 
-        var args = [url, openaiAPIKey]
-
+        var args = [url, openaiAPIKey, links_num_research]
+        console.log(links_num_research)
         this.status.setText(`🧙 🔎: Knowledge Wizard researching ${url}...`)
         this.status.setAttr('title', 'Wizard is researching the url')
 
@@ -745,8 +748,8 @@ export default class VCWizardPlugin extends Plugin{
         final_text = final_text.replace('Problem to be solved:', '#### Problem to be solved')
         final_text = final_text.replace("Product:", "#### Product")
         final_text = final_text.replace('Features:', '#### Features')
-        final_text = final_text.replace('Competition:', '#### Competition')
         final_text = final_text.replace('Business Model:', '#### Business Model')
+        final_text = final_text.replace('Competition:', '#### Competition')
         final_text = final_text.replace('Vision:', '#### Vision')
         final_text = final_text.replace('Extras:', '#### Extras')
         console.log(final_text)
@@ -838,6 +841,17 @@ class VCWizardSettingTab extends PluginSettingTab{
                 this.plugin.settings.pineconeEnv = value;
                 await this.plugin.saveSettings();
             }));
+        
+        new Setting(containerEl)
+            .setName('Number of sub-links to read for URL Research')
+            .setDesc('default is 6')
+            .addText(text => text
+                .setPlaceholder('6')
+                .setValue(this.plugin.settings.links_num)
+                .onChange(async (value) => {
+                    this.plugin.settings.links_num = value;
+                    await this.plugin.saveSettings();
+                }));
 	}
 
 }

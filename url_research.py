@@ -36,6 +36,7 @@ verbosity = False
 
 url = sys.argv[1]
 key = sys.argv[2]
+links_num = int(sys.argv[3])
 os.environ["OPENAI_API_KEY"] =  key
 
 
@@ -130,13 +131,14 @@ async def analyze_startup_from_summaries(chat_model: ChatOpenAI, paragraph_group
         chat_model (ChatOpenAI): an OpenAI chat bot 
         paragraph_groups (list): list of groups of paragraphs (chunked to avoid token limit) to be fed to the chat bot to create analysis for the startup
     """
-    human_request_template = "Given the following paragraphs about a startup:\n\n{paragraphs}\n\nPlease provide a detailed analysis of the startup. Your analysis should be divided in the following subsections:\n\
+    human_request_template = "Given the following paragraphs about a startup:\n\n{paragraphs}\n\nPlease provide a detailed analysis of the startup. You are smart assistant who always sticks to the facts and depends only on information in the paragraphs. If information is missing, you always say 'No Information'. Your analysis should be divided in the following subsections:\n\
 - Problem to be solved: <problem the startup is solving in bullet points>\n\
 - Product: <detailed description products of the startup and how it solves the problem in bullet points>\n\
 - Features: <detailed description of the features of the products in bullet points>\n\
+- Business Model: <ONLY IF PRICING OR BUSINESS MODEL IS EXPLICITLY MENTIONED. Otherwise say 'No Information'>\n\
 - Competition: <detailed overview of the competitors to the startup in bullet points>\n\
 - Vision: <vision of the startup in bullet points>\n\
-- Extras: <additional note-worthy information in bullet points. Add as many points as possiblecle>"
+- Extras: <additional note-worthy information in bullet points. Add as many points as possible>"
     human_message_prompt = HumanMessagePromptTemplate.from_template(human_request_template)
     chat_prompt = ChatPromptTemplate.from_messages([human_message_prompt])
     
@@ -176,8 +178,7 @@ async def main(url):
     messages = []
     for sub_url, to_check in absolute_sub_urls.items():
         # Read text from the top 6 links on the homepage, prepare a summarization request for each of them
-        #todo make the number variable
-        if i > 5:
+        if i >= links_num:
             break
         if to_check:
             _, text = get_links(sub_url)
