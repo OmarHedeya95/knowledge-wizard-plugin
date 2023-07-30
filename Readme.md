@@ -36,6 +36,8 @@ You just input the name of the indsutry and you get a market map
 ## Market Research Demo
 You just input the name of the indsutry and you get a detailed market research along with resources
 
+PS: Sometimes the market research won't work. For this problem you should open the edge browser, login Bing Chat and just have one conversation (this is needed to verify yourself)!
+
 ![screen-gif](./gifs/market_map.gif)
 </details>
 
