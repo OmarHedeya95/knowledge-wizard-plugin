@@ -14,12 +14,39 @@ from langchain.schema import (
 )
 
 import asyncio
-from EdgeGPT import Chatbot, ConversationStyle, Query, Cookie
+from EdgeGPT.EdgeGPT import Chatbot, ConversationStyle #, Query, Cookie
 
 '''Bing Chat Methods'''
 
+def getCookies(url):
+    import browser_cookie3
+    browsers = [
+        # browser_cookie3.chrome,
+        # browser_cookie3.chromium,
+        # browser_cookie3.opera,
+        # browser_cookie3.opera_gx,
+        # browser_cookie3.brave,
+        browser_cookie3.edge,
+        # browser_cookie3.vivaldi,
+        # browser_cookie3.firefox,
+        # browser_cookie3.librewolf,
+        # browser_cookie3.safari,
+    ]
+    for browser_fn in browsers:
+        # if browser isn't installed browser_cookie3 raises exception
+        # hence we need to ignore it and try to find the right one
+        try:
+            cookies = []
+            cj = browser_fn(domain_name=url)
+            for cookie in cj:
+                cookies.append(cookie.__dict__)
+            return cookies
+        except:
+            continue
+
+
 async def bing_chat_search(prompt: str, plugin_path: str):
-    bot = await Chatbot.create(cookie_path= plugin_path + '/cookies.json')
+    bot = await Chatbot.create(cookies=getCookies('.bing.com'))   #(cookie_path= plugin_path + '/cookies.json')
     
     # Step 1: Call the ask method and store the Coroutine in a variable
     ask_coroutine = bot.ask(prompt=prompt, conversation_style=ConversationStyle.creative) #conversation_style=ConversationStyle.creative
@@ -27,8 +54,8 @@ async def bing_chat_search(prompt: str, plugin_path: str):
     # Step 2: Use the await keyword to run the Coroutine and get the result
     result = await ask_coroutine
 
-    reply = result['item']['messages'][1]['text']
-    sources_list = result["item"]["messages"][1]["sourceAttributions"]
+    reply = result['item']['messages'][-1]['text']
+    sources_list = result["item"]["messages"][-1]['sourceAttributions']
     filtered_sources = []
     for source in sources_list:
         filtered_sources.append(source['seeMoreUrl'])
