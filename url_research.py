@@ -145,12 +145,12 @@ async def analyze_startup_from_summaries(chat_model: ChatOpenAI, paragraph_group
     paragrah_to_summary_chain = LLMChain(llm=chat_model, prompt=chat_prompt, verbose=verbosity)
     
 
-    # Generate anaylsis for the startup from different paragraphs parallely
+    # Generate anaylsis for the startup from different paragraphs parallely (we get back different summaries each based on the paragraphs it let)
     tasks = [async_generate(paragrah_to_summary_chain, paragraphs) for paragraphs in paragraph_groups]
     results = await asyncio.gather(*tasks)
 
 
-
+    # We then get each summary and progressively improve our overall summarization of the startup
     system_prompt_template = "You are a tech journalist with a keen eye for details. You will first read a summary of a startup then follow-up information about the startup. Your task is to enrich the startup summary with helpful information from the follow-up. Include as much information as possible in the enriched summary. The enriched summary must always have the same format as the original summary (also in bullet points)."
     system_prompt = SystemMessagePromptTemplate.from_template(system_prompt_template)
     human_request_template = "## Summary:\n{summary}\n\n## Follow up:\n{follow_up}"
