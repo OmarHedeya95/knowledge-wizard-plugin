@@ -24,6 +24,7 @@ export class TextInputModal extends Modal {
       inputEl.addEventListener('input', (event) => {
         event.stopPropagation();
       });
+
   
       const submitButton = contentEl.createEl('button', { text: 'Submit' });
       submitButton.addEventListener('click', () => {

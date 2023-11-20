@@ -1,10 +1,10 @@
-import { App, Editor, MarkdownView, Modal, Notice, Plugin, PluginSettingTab, Setting, Menu, MenuItem, MarkdownFileInfo, TFile, TAbstractFile} from 'obsidian';
+import { App, Editor, MarkdownView, Modal, Notice, Plugin, PluginSettingTab, Setting, Menu, MenuItem, MarkdownFileInfo, TFile, TAbstractFile, request, moment} from 'obsidian';
 import { WizardView, WIZARD_VIEW } from 'view';
 import {TextInputModal} from 'modal';
 import * as fs from 'fs';
-import { execSync } from 'child_process';
+//import {fs} from 'fs'
+//import { execSync } from 'child_process';
 const { Configuration, OpenAIApi } = require("openai");
-
 
 
 let pythonPath = ''
@@ -13,33 +13,9 @@ let openaiAPIKey = ''
 let pineconeAPIKey = ''
 let pineconeIndexName = ''
 let pineconeEnvName = 'us-east1-gcp'
-let links_num_research = '6'
 
 
-async function openai_js(query: String, system_prompt: String){
-    const configuration = new Configuration({
-        apiKey: openaiAPIKey,
-      });
-      //to avoid an annoying error/warning message
-      delete configuration.baseOptions.headers['User-Agent'];
 
-      const openai = new OpenAIApi(configuration);
-      const system_message = system_prompt
-      
-    const response = await openai.createChatCompletion({
-        model: "gpt-4",
-        temperature: 1.0,
-        max_tokens: 1024,
-        messages: [
-            {role: "system", content: system_message},
-            {role: "user", content: query} 
-        ]
-      });
-    
-    let summary = response.data.choices[0].message.content
-    //console.log(`Local Summary:\n${summary}`)
-    return summary
-}
 async function launch_python(pythonPath: string, scriptPath: string, scriptName: string, args: any){
     /**
      * This function launches a python script with the correct python virtual environment and returns whatever the python script prints!! (no value passing, take care)
@@ -57,30 +33,7 @@ async function launch_python(pythonPath: string, scriptPath: string, scriptName:
     return result
 
 }
-function extract_title_and_note(text: string){
-    /**
-     * This function takes all the text in the file and returns the title and the body of the note.
-     * The split happens based on h1 header. 
-     * This means substrings[0] is usually the data before the title.
-     * substrings[1] is usually the body of the note
-     * if there is substring [2], this means there is another h1 header (usually # Stop Indexing)
-     * Downstream tasks only deals with substring[1] as the note; i.e information after the Stop Indexing are execluded
-     */
 
-        //?gm means string is multilines, and ^ would catch beginning of every line not just beginning of the string!
-        let pattern = /^# .*\n/gm;
-        let matches = text.match(pattern);
-        let title = ''
-        if(matches){
-            title = matches[0]
-        }
-        let substrings = text.split(pattern)
-        console.log(`Title: ${title}`)
-        console.log(substrings)
-
-        return [title, substrings]
-
-}
 
 function file_ready_for_hashtags(file_content: string){
     return file_content.includes('#AddHashtags')
@@ -132,7 +85,7 @@ function append_to_json(file_path: string, key: any, value:any){
         const updatedJson = JSON.stringify(oldData)
         fs.writeFile(file_path, updatedJson, (err) => {
             if (err) throw err;
-            console.log('Data appended to file')
+            //console.log('Data appended to file')
         })
 
 
@@ -140,27 +93,8 @@ function append_to_json(file_path: string, key: any, value:any){
 
 }
 
-interface ButlerSettings {
-	vaultPath: string;
-    openAIKey: string;
-    pineconeKey: string;
-    pineconeIndexName: string;
-    pineconeEnv: string;
-    pythonPath: string;
-    links_num: string
 
-}
 
-const DEFAULT_SETTINGS: ButlerSettings = {
-	vaultPath: 'default',
-    openAIKey: 'default',
-    pineconeKey: 'default',
-    pineconeIndexName: 'default',
-    pineconeEnv: 'us-east1-gcp',
-    pythonPath: '<path-to-virtual-env>',
-    links_num: '6'
-
-}
 
 enum FileType {
     modified = 'modified',
@@ -168,10 +102,6 @@ enum FileType {
     new = 'new'
 }
 
-enum SummaryType{
-    vc = 'vc',
-    startup = 'startup'
-}
 
 
 
@@ -179,72 +109,51 @@ enum SummaryType{
 export default class VCWizardPlugin extends Plugin{
     settings: ButlerSettings;
     status: HTMLElement;
+
+    
     async onload() {
         await this.loadSettings();
         this.status = this.addStatusBarItem();
+        
         
         this.registerView(WIZARD_VIEW, (leaf)=> new WizardView(leaf))
         this.app.workspace.onLayoutReady(() => {
 			this.activateView();
 			this.updateView([]);
 		});
+
+
+        //todo spin up the container in a better way? Check if it is spinning already?!
+        //todo also stop the container when you are unloading
+        //todo Maybe use spawn better?!
+        this.status.setText('🧙: Knowledge Wizard is loading...')
+        this.status.setAttr('title', 'Wizard is loading....')
+
         
         this.addCommand({id: 'index-vault', name: 'Index Vault', callback: () => this.index_vault()})
         this.addCommand({id: 'index-changed-files', name: 'Reindex New/Changed Files Only', callback: () => this.index_new_and_modified_files()})
         this.addCommand({id: 'find-similar-ideas', name: 'Find Similar Ideas', editorCallback: (editor, view) => this.find_similar_ideas(editor, view)})
         this.addCommand({id: 'hashtag-generator', name: 'Add Hashtags to #AddHashtags Files', callback: () => this.add_hashtags(this.status)})
 
-        this.addCommand({
-            id: 'market-research-command',
-            name: 'Market Research',
-            editorCallback: (editor: Editor) => {
-              const inputModal = new TextInputModal(this.app, 'market-research',(input) => {
-                // Handle the submitted text here
-                console.log('Submitted text:', input);
-                this.market_research(input, editor);
-
-              });
-              inputModal.open();
-            },
-          });
-
-        this.addCommand({
-            id: 'market-map-command',
-            name: 'Market Map',
-            editorCallback: (editor: Editor) => {
-              const inputModal = new TextInputModal(this.app, 'market-research',(input) => {
-                // Handle the submitted text here
-                console.log('Submitted text:', input);
-                this.market_map(input, editor);
-
-              });
-              inputModal.open();
-            },
-          });
-
-        this.addCommand({
-            id: 'url-research-command',
-            name: 'Url Research',
-            editorCallback: (editor: Editor) => {
-              const inputModal = new TextInputModal(this.app, 'Url Research',(input) => {
-                // Handle the submitted text here
-                console.log('Submitted text:', input);
-                this.url_research(input, editor);
-
-              });
-              inputModal.open();
-            },
-          });
 
         
-
+        this.registerInterval(window.setInterval( ()=> {
+            console.log("Reindexing the vault at:")
+            console.log(moment().format("H:mm:ss"));
+            this.index_new_and_modified_files()
+        }, 
+            1e6 * 2   )) // we reindex the new files every 6 hours
         this.addSettingTab(new VCWizardSettingTab(this.app, this));
         this.registerEvent(this.app.vault.on('modify', (file) => this.register_file_change(file, FileType.modified)))
         this.registerEvent(this.app.vault.on('delete', (file) => this.register_file_change(file, FileType.deleted)))
+        
+
         this.status.setText('🧙: Knowledge Wizard ready')
         this.status.setAttr('title', 'Wizard is ready')
         //When you start a new vault, all files are considered as "created", we use this delay to avoid this problem and have only new synced files from Readwise labelled as new
         setTimeout(()=>{this.registerCreatedFile()}, 500)
+
+
     
     }
 
@@ -253,10 +162,13 @@ export default class VCWizardPlugin extends Plugin{
     };
 
 
+
+
     onunload() {
         this.app.workspace.detachLeavesOfType(WIZARD_VIEW)
         this.status.setText('🧙: Knowledge Wizard left')
         this.status.setAttr('title', 'Wizard says 👋')
+
 
     }
 
@@ -313,7 +225,6 @@ export default class VCWizardPlugin extends Plugin{
         pineconeAPIKey = this.settings.pineconeKey
         pineconeIndexName = this.settings.pineconeIndexName
         pineconeEnvName = this.settings.pineconeEnv
-        links_num_research = this.settings.links_num
         
         pythonPath = this.settings.pythonPath
     }
@@ -325,7 +236,6 @@ export default class VCWizardPlugin extends Plugin{
         pineconeEnvName = this.settings.pineconeEnv
         pineconeAPIKey = this.settings.pineconeKey
         pineconeIndexName = this.settings.pineconeIndexName
-        links_num_research = this.settings.links_num
         
         
 
@@ -359,10 +269,16 @@ export default class VCWizardPlugin extends Plugin{
     
     }
 
+
+
+
+
+
     async register_file_change(file: TAbstractFile, type:FileType){        
         const plugin_path = scriptPath_AI
         let base_name = file.name.split('.md')[0]
         let file_path = this.settings.vaultPath + file.path
+        
         let storage_path = plugin_path + '/modified_paths.json'
         
         if (type == FileType.modified){
@@ -401,7 +317,7 @@ export default class VCWizardPlugin extends Plugin{
             }
     
             let files_to_modify 
-            new Notice("Will read changed files now..")
+            new Notice("Reindexing changed files..")
             this.status.setText('🧙: Knowledge Wizard indexing...')
             this.status.setAttr('title', 'Wizard is indexing your vault...')
             try{
@@ -422,55 +338,88 @@ export default class VCWizardPlugin extends Plugin{
 
             }
 
-            let counter = 0
             try{
-                //!await this.index_files(storage_path)
                 
-                // We will index file by file to keep the user updated and keep track of any files that were not indexed due to any error
-                for (let [key, value] of Object.entries(files_to_modify) as [any, any]){
-                    if (value.change_type == FileType.new || value.change_type == FileType.modified || value.change_type == FileType.deleted){
-                        new Notice(`Indexing file: ${key}`)
-                        counter = counter + 1
-                        let file_path = value.full_path
-                        let modification_type = value.change_type
-                        let file_name = key
-
-                        await this.index_file(file_path, modification_type, file_name)
-
-                    }
-                }
-
-
-                
-                
+                await this.index_loop(files_to_modify)   
             }
             catch (e){
+                console.log(e.message)
                 new Notice("There was an error while indexing!")
                 this.status.setText('🧙: Knowledge Wizard ready')
                 this.status.setAttr('title', 'Knowledge Wizard is ready')
                 return;
             }
-            //Empty the modified file
+
+
             new Notice("Finished indexing!")
-            
-            if (Object.entries(files_to_modify).length > counter){
-                //If any problem happened and some files were not indexed save them for the next time
-                new Notice("Some files were NOT indexed! Run the command again")
-                let new_files = Object.entries(files_to_modify).slice(counter + 1)
-                let new_dict = Object.fromEntries(new_files)
-                save_json(storage_path, new_dict)
-            }
-            
-
-
-
             this.status.setText('🧙: Knowledge Wizard ready')
             this.status.setAttr('title', 'Knowledge Wizard is ready')
-            
             save_json(storage_path, {})
 
         })
     
+    }
+
+
+    //Indexing to pineconde methods
+    async index_file (file_path: string, modification_type: string, file_name: string){
+
+        let note_text = ''
+        try{
+            note_text = fs.readFileSync(file_path, 'utf8')
+        }
+        catch(e){
+            console.log(e.message)
+            new Notice(`${file_name} can not be read!`)
+            return;
+        }
+        const res = await fetch("https://pinecone-indexer-xm5lmdnsxq-ey.a.run.app/index", {
+            method: "post",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify({
+                file_name: file_name,
+                note: note_text
+            })
+        })
+        
+        const t = await res.text()
+        const status = await res.status
+
+        if (status == 200){
+            new Notice(`Indexed Successfully: ${file_name} !`)
+        }
+        else{
+            new Notice(`Server error while indexing ${file_name} `)
+        }
+
+
+    }
+
+    async index_loop(files_dict: any){
+        let counter = 0
+        let number_of_files = Object.entries(files_dict).length
+
+        for (let [file_name, file_data] of Object.entries(files_dict) as [any, any]){
+            new Notice(`${counter}/${number_of_files} has been indexed`)
+            
+            try{
+                console.log(file_name)
+                new Notice(`Indexing: ${file_name}...`)
+                
+                await this.index_file(file_data['full_path'], file_data['change_type'], file_name)
+                
+                counter += 1
+                delete files_dict[file_name]
+            }
+            catch(e){
+                console.log(e.message)
+                new Notice(`Client error while indexing ${file_name}!`)
+               
+            }
+
+
+        }
+
     }
 
     async index_vault(){
@@ -481,64 +430,38 @@ export default class VCWizardPlugin extends Plugin{
         new Notice("Started indexing the full vault!")
         this.status.setText('🧙: Knowledge Wizard indexing...')
         this.status.setAttr('title', 'Wizard is indexing your vault...')
+        
         for(let file of files){
-            if (file.path.includes('Readwise')){  
+            let lower_case_file_path = file.path.toLowerCase()
+            if (!  (lower_case_file_path.includes('projects') || lower_case_file_path.includes('canvas') || lower_case_file_path.includes('resources') || lower_case_file_path.includes('templates') || lower_case_file_path.includes('.jpg'))  ){  
                 file_paths[file.basename] = {'change_type': FileType.new,'full_path': vault_path + file.path}
             }
         }
         console.log(`Files length: ${file_paths.length}`)
         const json_path = plugin_path + '/' + 'file_paths.json'
+        
         save_json(json_path, file_paths)
-        try{
-            await this.index_files(json_path)
-
-        }
-        catch (e){
-            new Notice("There was an error while indexing!")
-            return;
-        }
+                
+        await this.index_loop(file_paths)       
+        
         new Notice("Finished indexing!")
         this.status.setText('🧙: Knowledge Wizard ready')
         this.status.setAttr('title', 'Knowledge Wizard is ready')
-        save_json(json_path, {})
+
+
+        save_json(json_path, file_paths)
 
         
-        
-
     }
 
-    async index_files(json_path: string){
-        /**
-         * Index all the files who paths is saved in json_path
-         */
-        
-        let scriptPath = scriptPath_AI
-        const scriptName = 'index_vault.py'
-        const plugin_path = scriptPath_AI
-        
-        var args = [json_path, openaiAPIKey, plugin_path, pineconeAPIKey, pineconeIndexName, pineconeEnvName]
 
 
-        let results = await launch_python(pythonPath, scriptPath, scriptName, args)
-        console.log(results)
-        this.status.setText('🧙: Knowledge Wizard ready')
-        this.status.setAttr('title', 'Knowledge Wizard is ready')
-        return results
-    }
-
-    async index_file (file_path: string, modification_type: string, file_name: string){
-
-        let scriptPath = scriptPath_AI
-        const scriptName = 'index_file.py'
-        const plugin_path = scriptPath_AI
-        
-        var args = [file_path, openaiAPIKey, plugin_path, pineconeAPIKey, pineconeIndexName, pineconeEnvName, modification_type, file_name]
-        let results = await launch_python(pythonPath, scriptPath, scriptName, args)
-        console.log(results)
-        return results
 
 
-    }
+
+
+
+
     async extract_title_and_path_json(results: JSON){
         let currnet_filename = this.app.workspace.getActiveFile()?.basename
         let search_results: any = []
@@ -635,131 +558,6 @@ export default class VCWizardPlugin extends Plugin{
 
     }
 
-
-
-    async market_research(industry: string, editor: Editor){
-        let scriptPath = scriptPath_AI
-        const plugin_path = scriptPath_AI
-        const scriptName =  'market_research.py'
-
-        console.log(plugin_path)
-
-        var args = [industry, plugin_path]
-
-        this.status.setText('🧙 🔎: Knowledge Wizard doing market research...')
-        this.status.setAttr('title', 'Wizard is researching the market')
-
-        const research_result = await launch_python(pythonPath, scriptPath, scriptName, args) as any
-        //console.log(research_result)
-
-        let dict: {[key: string]: {text: string, sources: string[]}} = JSON.parse(research_result)
-
-        //console.log(dict)
-        let final_text = '## Market Research\n'
-        for (const key in dict){
-            //console.log(dict[key].text)
-            final_text = final_text + '#### Sub Result\n' + dict[key].text + '\n##### Sources:\n'
-            let i = 1;
-            for (let source in dict[key].sources){
-
-                final_text = final_text + `${i}) ` + dict[key].sources[source] + '\n'
-                i = i + 1;
-
-            }
-
-        }
-
-        //console.log(final_text)
-
-        editor.replaceRange(final_text, editor.getCursor());
-
-        this.status.setText('🧙: Knowledge Wizard ready')
-        this.status.setAttr('title', 'Wizard is ready')
-
-    }
-
-    async market_map(industry: string, editor: Editor){
-        let scriptPath = scriptPath_AI
-        const plugin_path = scriptPath_AI
-        const scriptName =  'market_map.py'
-
-        console.log(plugin_path)
-
-        var args = [industry, plugin_path]
-
-        this.status.setText('🧙 🔎: Knowledge Wizard mapping the market...')
-        this.status.setAttr('title', 'Wizard is researching the market')
-
-        const research_result = await launch_python(pythonPath, scriptPath, scriptName, args) as any
-        //console.log(research_result)
-
-        let dict: {[key: string]: {text: string, sources: string[]}} = JSON.parse(research_result)
-
-        //console.log(dict)
-        let final_text = '## Market Map\n'
-        for (const key in dict){
-            //console.log(dict[key].text)
-            final_text = final_text + dict[key].text + '\n##### Sources:\n'
-            let i = 1;
-            for (let source in dict[key].sources){
-
-                final_text = final_text + `${i}) ` + dict[key].sources[source] + '\n'
-                i = i + 1;
-
-            }
-
-        }
-
-        //console.log(final_text)
-
-        editor.replaceRange(final_text, editor.getCursor());
-
-        this.status.setText('🧙: Knowledge Wizard ready')
-        this.status.setAttr('title', 'Wizard is ready')
-
-    }
-
-    async url_research(url: string, editor: Editor){
-        let scriptPath = scriptPath_AI
-        const plugin_path = scriptPath_AI
-        const scriptName =  'url_research.py'
-
-        //console.log(plugin_path)
-        
-
-        var args = [url, openaiAPIKey, links_num_research]
-        console.log(links_num_research)
-        this.status.setText(`🧙 🔎: Knowledge Wizard researching ${url}...`)
-        this.status.setAttr('title', 'Wizard is researching the url')
-
-        const research_result = await launch_python(pythonPath, scriptPath, scriptName, args) as any
-        console.log("Inside Url Research after results came back")
-        console.log(research_result)
-
-        let dict: {[key: string]: string} = JSON.parse(research_result)
-
-        console.log(dict)
-        let final_text = `## ${url} research\n`
-        for (const key in dict){
-            //console.log(dict[key].text)
-            final_text = final_text + dict[key] 
-
-        }
-        final_text = final_text.replace('Problem to be solved:', '#### Problem to be solved')
-        final_text = final_text.replace("Product:", "#### Product")
-        final_text = final_text.replace('Features:', '#### Features')
-        final_text = final_text.replace('Business Model:', '#### Business Model')
-        final_text = final_text.replace('Competition:', '#### Competition')
-        final_text = final_text.replace('Vision:', '#### Vision')
-        final_text = final_text.replace('Extras:', '#### Extras')
-        console.log(final_text)
-
-        editor.replaceRange(final_text, editor.getCursor());
-
-        this.status.setText('🧙: Knowledge Wizard ready')
-        this.status.setAttr('title', 'Wizard is ready')
-
-    }
 }
 
 class VCWizardSettingTab extends PluginSettingTab{
@@ -853,5 +651,27 @@ class VCWizardSettingTab extends PluginSettingTab{
                     await this.plugin.saveSettings();
                 }));
 	}
+
+}
+
+interface ButlerSettings {
+	vaultPath: string;
+    openAIKey: string;
+    pineconeKey: string;
+    pineconeIndexName: string;
+    pineconeEnv: string;
+    pythonPath: string;
+    links_num: string
+
+}
+
+const DEFAULT_SETTINGS: ButlerSettings = {
+	vaultPath: 'default',
+    openAIKey: 'default',
+    pineconeKey: 'default',
+    pineconeIndexName: 'default',
+    pineconeEnv: 'us-east1-gcp',
+    pythonPath: '<path-to-virtual-env>',
+    links_num: '6'
 
 }
