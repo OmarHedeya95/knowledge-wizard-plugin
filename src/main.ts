@@ -423,9 +423,13 @@ export default class VCWizardPlugin extends Plugin {
     try {
       note_text = fs.readFileSync(file_path, "utf8");
     } catch (e) {
-      console.log(e.message);
-      new Notice(`${file_name} can not be read!`);
-      throw Error(`${file_name} can not be read!`);
+      if (modification_type == "deleted") {
+        note_text = "";
+      } else {
+        console.log(e.message);
+        new Notice(`${file_name} can not be read!`);
+        throw Error(`${file_name} can not be read!`);
+      }
     }
     const res = await fetch(
       "https://pinecone-indexer-xm5lmdnsxq-ey.a.run.app/index",
@@ -475,6 +479,9 @@ export default class VCWizardPlugin extends Plugin {
       } catch (e) {
         console.log(e.message);
         new Notice(e.message);
+        if (file_data["change_type"] == "deleted") {
+          delete files_dict[file_name];
+        }
       }
     }
   }
