@@ -262,35 +262,30 @@ export default class VCWizardPlugin extends Plugin {
     status.setAttr("title", "Wizard is ready");
   }
 
+  async similarity_search(note_text: string) {
+    const res = await fetch(
+      "https://pinecone-indexer-xm5lmdnsxq-ey.a.run.app/search",
+      {
+        method: "post",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          note: note_text,
+        }),
+      }
+    );
+
+    const message: JSON = await res.json();
+    return message;
+  }
+
   async find_similar_ideas(
     editor: Editor,
     view: MarkdownView | MarkdownFileInfo
   ) {
     const sel = editor.getSelection();
     new Notice("Search in progress...");
-    let scriptPath = scriptPath_AI;
-    const scriptName = "similar_ideas_pinecone.py"; //'similar_ideas.py'
 
-    var args = [
-      sel,
-      openaiAPIKey,
-      this.settings.vaultPath,
-      pineconeAPIKey,
-      pineconeIndexName,
-      pineconeEnvName,
-    ];
-    this.status.setText("🧙 🔎: Knowledge Wizard searching...");
-    this.status.setAttr("title", "Wizard is searching for similar ideas");
-
-    const similar_ideas = (await launch_python(
-      pythonPath,
-      scriptPath,
-      scriptName,
-      args
-    )) as any;
-
-    console.log(similar_ideas[0]);
-    let dict = JSON.parse(similar_ideas[0]);
+    let dict = await this.similarity_search(sel);
 
     let search_results = await this.extract_title_and_path_json(dict);
 
@@ -489,10 +484,13 @@ export default class VCWizardPlugin extends Plugin {
   async extract_title_and_path_json(results: JSON) {
     let currnet_filename = this.app.workspace.getActiveFile()?.basename;
     let search_results: any = [];
-    for (let [note_title, content] of Object.entries(results)) {
+    for (let [_, content] of Object.entries(results)) {
+      let note_title = content["metadata"]["source"];
+      content = content["pageContent"];
+      console.log(note_title);
+      console.log(content);
       if (note_title.includes("***")) {
         note_title = note_title.split("***")[0];
-        //console.log(`note_title: ${note_title}`)
       }
       let source: string = note_title;
 
@@ -500,6 +498,7 @@ export default class VCWizardPlugin extends Plugin {
         //Do not get results from the current file
         continue;
       }
+
       let source_file = await this.get_path_by_name(source);
       if (source_file != null && source != null) {
         let obsidian_path = "obsidian://advanced-uri?vault="; //open - advanced-uri
